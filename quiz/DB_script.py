@@ -3,14 +3,14 @@ import json
 import os
 import subprocess
 
-GIT_REPRO_URL = ""
+#GIT_REPRO_URL = ""
 DB_FILENAME = "quiz.db"
-Counter_FILE = "counter.json"
-BRANCH = "main"():
+#Counter_FILE = "counter.json"
+#BRANCH = "main"():
    
-def get_db_file_pull():
-    subprocess.run(["git", "pull", "origin", BRANCH])
-    return DB_FILENAME
+#def get_db_file_pull():
+ #   subprocess.run(["git", "pull", "origin", BRANCH])
+  #  return DB_FILENAME
 
 def create_DB():
     if not os.path.exists(DB_FILENAME):
@@ -39,3 +39,5 @@ def create_counter_file():
             json.dump({"counter": 0}, f)
     else:
         print("Counter file already exists.") 
+
+create_DB()

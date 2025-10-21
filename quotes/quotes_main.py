@@ -17,7 +17,7 @@ def add_quotes(text, db_path="quotes/quotes.db"):
         return False
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute ("INSERT INTO Zitat (text) VALUES (?)", (text.strip()))
+    cursor.execute ("INSERT INTO Zitat (text) VALUES (?)", (text.strip(),))
     conn.commit()
     conn.close()
     return True
@@ -33,7 +33,7 @@ def git_pull_quotesdb():
 def git_push_quotesdb(commit_message="Update quotes.db"):
     """Pusht die aktuelle quotes.db zu Git."""
     try:
-        subprocess.run(["git", "add", "news.db"], check=True)
+        subprocess.run(["git", "add", "quotes.db"], check=True)
         subprocess.run(["git", "commit", "-m", commit_message], check=True)
         subprocess.run(["git", "push"], check=True)
         print("Git Push für quotes.db ausgeführt.")

@@ -7,16 +7,12 @@ import sys
 from news.news_main import get_news, delete_old_news, add_news_item
 # Quotes-Import
 from quotes.quotes_main import get_quotes, add_quotes as add_quote_item
+from counter.counter_main import CounterDialog
+from password.password_main import PasswordWindow
+from quiz.quiz_main import QuizScoreWindow
+from utils.git_utils import git_pull, git_push, git_merge
+from calendar.date_attendance_main import AttendanceCalendar
 
-def git_pull():
-    # Platzhalter für echten Git Pull
-    print("Git Pull ausgeführt")
-def git_push():
-    # Platzhalter für echten Git Push
-    print("Git Push ausgeführt")
-def git_merge():
-    # Platzhalter für echten Git Merge
-    print("Git Merge ausgeführt")
 
 class NewsFenster(QWidget):
     def __init__(self):
@@ -117,7 +113,6 @@ class QuotesFenster(QWidget):
 
     def reload_quotes(self):
         self.quotes_list = get_quotes()
-        self.current_index = 0
         self.label.setText(self.quotes_list[self.current_index])
 
     def add_quote(self):
@@ -143,14 +138,23 @@ class MainWindow(QMainWindow):
 
         # Obere Buttons
         top_layout = QHBoxLayout()
+
+        btn_anwesenheit = QPushButton("Anwesenheitskalender")
+        btn_anwesenheit.clicked.connect(self.oeffne_anwesenheit)
+        top_layout.addWidget(btn_anwesenheit)
+
         btn_counter = QPushButton("Störungs Counter")
         btn_counter.clicked.connect(self.oeffne_counter)
         top_layout.addWidget(btn_counter)
-        top_layout.addWidget(QPushButton("Platzhalter quiz"))
+
+        btn_quizscore = QPushButton("Quiz-Score Übersicht")
+        btn_quizscore.clicked.connect(self.oeffne_quizscore)
+        top_layout.addWidget(btn_quizscore)
+
         btn_password = QPushButton("Passwortgenerator")
         btn_password.clicked.connect(self.oeffne_password)
         top_layout.addWidget(btn_password)
-        top_layout.addWidget(QPushButton("Platzhalter Kalender"))
+        
         main_layout.addLayout(top_layout)
 
         # Mittlere Info-Fenster
@@ -195,12 +199,22 @@ class MainWindow(QMainWindow):
         self.git_timer = QTimer(self)
         self.git_timer.timeout.connect(self.git_auto_pull)
         self.git_timer.start(60000)  # 60 Sekunden
+    
+    def oeffne_anwesenheit(self):
+        self.anwesenheit_window = AttendanceCalendar()
+        self.anwesenheit_window.show()
 
     def oeffne_counter(self):
-        pass  # Platzhalter
+        dialog = CounterDialog(self)
+        dialog.exec()
 
     def oeffne_password(self):
-        pass  # Platzhalter
+        self.password_window = PasswordWindow()
+        self.password_window.show()
+
+    def oeffne_quizscore(self):
+        self.quizscore_window = QuizScoreWindow()
+        self.quizscore_window.show()
 
     def git_update(self):
         git_pull()
