@@ -262,14 +262,15 @@ class QuizScoreWindow(QWidget):
         self.btn_quit.clicked.connect(self.quit_and_git)
         self.layout.addWidget(self.btn_quit)
 
-    def update_score_overview(self):
-        conn = sqlite3.connect(DB_PATH) # Zugriff auf globalen DB_PATH
-        c = conn.cursor()
-        # Anzahl beantworteter Fragen (Summe aller gegebene_antwort)
-        c.execute("SELECT COUNT(*) FROM gegebene_antwort")
-        count = c.fetchone()[0]
-        conn.close()
-        self.score_label.setText(f"Beantwortete Fragen: {count}")
+    #def update_score_overview(self):
+     #   conn = sqlite3.connect(DB_PATH) # Zugriff auf globalen DB_PATH
+      #  c = conn.cursor()
+       # # Anzahl beantworteter Fragen (Summe aller gegebene_antwort)
+       # c.execute("SELECT COUNT(*) FROM gegebene_antwort")
+       # count = c.fetchone()[0]
+       # conn.close()
+       # self.score_label.setText(f"Beantwortete Fragen: {count}")
+#TODO: ändern auf json lokal speichern und laden statt in der datenbank
 
     def show_questions(self):
         # Zeigt alle Fragen mit Antwortmöglichkeiten in einem Dialog

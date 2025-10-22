@@ -198,7 +198,7 @@ class MainWindow(QMainWindow):
         # Timer für automatisches Git Pull alle 60 Sekunden
         self.git_timer = QTimer(self)
         self.git_timer.timeout.connect(self.git_auto_pull)
-        self.git_timer.start(60000)  # 60 Sekunden
+        self.git_timer.start(60000000000)  #TODO: wieder auf 60 Sekunden ändern
     
     def oeffne_anwesenheit(self):
         self.anwesenheit_window = AttendanceCalendar()
