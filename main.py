@@ -9,7 +9,7 @@ from news.news_main import get_news, delete_old_news, add_news_item
 from quotes.quotes_main import get_quotes, add_quotes as add_quote_item
 from counter.counter_main import CounterDialog
 from password.password_main import PasswordWindow
-from quiz.quiz_main import QuizScoreWindow
+from quiz.quiz_main import QuizMainWindow
 from utils.git_utils import git_pull, git_push, git_merge
 from attendance_calendar.date_attendance_main import AttendanceCalendar
 
@@ -147,7 +147,7 @@ class MainWindow(QMainWindow):
         btn_counter.clicked.connect(self.oeffne_counter)
         top_layout.addWidget(btn_counter)
 
-        btn_quizscore = QPushButton("Quiz-Score Übersicht")
+        btn_quizscore = QPushButton("Quiz starten")
         btn_quizscore.clicked.connect(self.oeffne_quizscore)
         top_layout.addWidget(btn_quizscore)
 
@@ -213,8 +213,8 @@ class MainWindow(QMainWindow):
         self.password_window.show()
 
     def oeffne_quizscore(self):
-        self.quizscore_window = QuizScoreWindow()
-        self.quizscore_window.show()
+        self.quiz_window = QuizMainWindow()
+        self.quiz_window.show()
 
     def git_update(self):
         git_pull()

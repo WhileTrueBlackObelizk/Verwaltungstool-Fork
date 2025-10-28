@@ -1,355 +1,247 @@
-"""
-Schüler-Quiz-GUI:
-- Auswahl des eigenen Namens (inkl. Surren und Florian)
-- Quiz-Auswahl und Sortierung
-- Quiz starten
-"""
-
+import sys
 import os
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox, QListWidget, QMessageBox, QHBoxLayout, QDialog, QRadioButton, QButtonGroup, QScrollArea, QLineEdit
-from utils.git_utils import git_push
-from quiz.quiz_score_manager import aktualisiere_frage
-import sqlite3
-import sys        
+import json
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QPushButton, QDialog, QLabel, QRadioButton, QCheckBox,
+    QButtonGroup, QLineEdit, QHBoxLayout, QMessageBox, QComboBox
+)
+from PySide6.QtCore import Qt
 
 DB_PATH = "quiz_app.sqlite"
+SCORES_PATH = os.path.join(os.path.dirname(__file__), "quiz_scores.json")
 
-REPO_PATH = "."
+# Hilfsfunktionen für Score-Handling
 
+def lade_scores():
+    if not os.path.exists(SCORES_PATH):
+        return {}
+    with open(SCORES_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-class QuizDialog(QDialog):
-    def __init__(self, schueler_name, quiz_id, quiz_titel):
+def speichere_scores(scores):
+    with open(SCORES_PATH, "w", encoding="utf-8") as f:
+        json.dump(scores, f, indent=2)
+
+# Hilfsfunktion: Hole Frage mit höchstem Fehler-Count
+import sqlite3
+def frage_mit_hoechstem_count():
+    scores = lade_scores()
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, frage_text FROM frage")
+    fragen = c.fetchall()
+    conn.close()
+    # Finde Frage mit höchstem Fehler-Count
+    max_count = -9999
+    beste_frage = None
+    for frage_id, frage_text in fragen:
+        count = scores.get(str(frage_id), 0)
+        if count > max_count:
+            max_count = count
+            beste_frage = (frage_id, frage_text)
+    return beste_frage
+
+# Hauptmenü
+class QuizMainWindow(QWidget):
+    def __init__(self):
         super().__init__()
-        # Fenster-Titel setzen
-        self.setWindowTitle(f"Quiz: {quiz_titel}")
-        self.schueler_name = schueler_name  # Name des aktuellen Schülers
-        self.quiz_id = quiz_id              # ID des aktuellen Quiz
-        self.fragen = []                    # Liste der Fragen (frage_id, ButtonGroup)
-        self.antwortgruppen = []            # Liste der ButtonGroups für Antworten
+        self.setWindowTitle("Quiz Menü")
+        layout = QVBoxLayout(self)
+        self.btn_frage_beantworten = QPushButton("Frage beantworten")
+        self.btn_frage_hinzufuegen = QPushButton("Frage hinzufügen")
+        layout.addWidget(self.btn_frage_beantworten)
+        layout.addWidget(self.btn_frage_hinzufuegen)
+        self.btn_frage_beantworten.clicked.connect(self.frage_beantworten)
+        self.btn_frage_hinzufuegen.clicked.connect(self.frage_hinzufuegen)
 
-        # ScrollArea für viele Fragen, damit alles sichtbar bleibt
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        main_widget = QWidget()
-        self.layout = QVBoxLayout(main_widget)  # Layout für Fragen und Antworten
-        scroll.setWidget(main_widget)
-        dialog_layout = QVBoxLayout(self)
-        dialog_layout.addWidget(scroll)
-        self.setLayout(dialog_layout)
-
-        # Fragen und Antworten aus der Datenbank laden
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("SELECT id, frage_text FROM frage WHERE quiz_id = ?", (quiz_id,))
-        fragen = c.fetchall()
-        if not fragen:
-            self.layout.addWidget(QLabel("Keine Fragen im Quiz vorhanden."))
-        # Jede Frage einzeln abarbeiten
-        for frage_id, frage_text in fragen:
-            self.layout.addWidget(QLabel(frage_text)) # Frage anzeigen
-            c.execute("SELECT id, antwort_text FROM antwort WHERE frage_id = ?", (frage_id,))
-            antworten = c.fetchall()
-            group = QButtonGroup(self) # ButtonGroup für Antwortoptionen
-            # Jede Antwort als Radiobutton anzeigen
-            for antwort_id, antwort_text in antworten:
-                radio = QRadioButton(antwort_text) # Antwortoption als Radiobutton
-                radio.setProperty("antwort_id", antwort_id) # Antwort-ID speichern
-                group.addButton(radio)
-                self.layout.addWidget(radio)
-            self.fragen.append((frage_id, group)) # Frage und zugehörige Antworten speichern
-            self.antwortgruppen.append(group)
-        conn.close()
-
-        # Button zum Abschicken der Antworten
-        self.submit_btn = QPushButton("Abschicken")
-        self.submit_btn.clicked.connect(self.submit_quiz)
-        self.layout.addWidget(self.submit_btn)
-
-    def submit_quiz(self):
-        if not self.fragen:
-            QMessageBox.information(self, "Info", "Es sind keine Fragen im Quiz vorhanden.")
-            self.accept()
+    def frage_beantworten(self):
+        frage = frage_mit_hoechstem_count()
+        if not frage:
+            QMessageBox.information(self, "Info", "Keine Fragen vorhanden.")
             return
-        # Prüfen ob alle Fragen beantwortet wurden
-        gegeben_antworten = [] # Liste der gewählten Antworten
-        for frage_id, group in self.fragen:
-            checked = group.checkedButton()
-            if checked is None:
-                # Wenn eine Frage nicht beantwortet wurde, abbrechen
-                QMessageBox.warning(self, "Fehler", "Bitte alle Fragen beantworten!")
-                return
-            antwort_id = checked.property("antwort_id")
-            gegeben_antworten.append((frage_id, antwort_id))
-        # Ergebnis berechnen und speichern
+        dialog = FrageBeantwortenDialog(frage[0], frage[1], self)
+        dialog.exec()
+
+    def frage_hinzufuegen(self):
+        dialog = FrageHinzufuegenDialog(self)
+        dialog.exec()
+
+# Popup zum Beantworten einer Frage
+class FrageBeantwortenDialog(QDialog):
+    def __init__(self, frage_id, frage_text, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Frage beantworten")
+        self.frage_id = frage_id
+        self.frage_text = frage_text
+        self.richtig_ids = set()
+        self.antwort_checkboxes = []
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(frage_text))
+        # Antworten aus DB holen
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        # Schüler-ID aus Datenbank holen
-        schueler_id = c.execute("SELECT id FROM schueler WHERE name = ?", (self.schueler_name,)).fetchone()[0]
-        richtig = 0 # Zähler für richtige Antworten
-        falsch = 0  # Zähler für falsche Antworten
-        # Für jede Antwort prüfen ob sie richtig ist
-        for frage_id, antwort_id in gegeben_antworten:
-            ist_richtig = c.execute("SELECT ist_richtig FROM antwort WHERE id = ?", (antwort_id,)).fetchone()[0]
-            aktualisiere_frage(self.schueler_name, frage_id, ist_richtig)
+        c.execute("SELECT id, antwort_text, ist_richtig FROM antwort WHERE frage_id = ?", (frage_id,))
+        antworten = c.fetchall()
+        conn.close()
+        for antwort_id, antwort_text, ist_richtig in antworten:
+            cb = QCheckBox(antwort_text)
+            cb.setProperty("antwort_id", antwort_id)
+            layout.addWidget(cb)
+            self.antwort_checkboxes.append(cb)
             if ist_richtig:
-                richtig += 1
-            else:
-                falsch += 1
-        # Aktuelles Datum/Uhrzeit für das Ergebnis
-        import datetime
-        datum = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Ergebnis in die Datenbank schreiben
-        c.execute("INSERT INTO ergebnis (schueler_id, quiz_id, datum, richtig, falsch) VALUES (?, ?, ?, ?, ?)",
-                  (schueler_id, self.quiz_id, datum, richtig, falsch))
-        ergebnis_id = c.lastrowid
-        # Gegebene Antworten speichern
-        for frage_id, antwort_id in gegeben_antworten:
-            c.execute("INSERT INTO gegebene_antwort (ergebnis_id, frage_id, antwort_id) VALUES (?, ?, ?)",
-                      (ergebnis_id, frage_id, antwort_id))
-        conn.commit()
-        conn.close()
-        # Ergebnis zu Git pushen, damit Lehrer es sehen kann
-        git_push(REPO_PATH)
-        # Ergebnis dem Schüler einmalig anzeigen
-        QMessageBox.information(self, "Ergebnis", f"Richtig: {richtig}\nFalsch: {falsch}")
-        self.accept() # Dialog schließen
+                self.richtig_ids.add(antwort_id)
+        # Buttons
+        btn_layout = QHBoxLayout()
+        self.btn_beenden = QPushButton("Beenden")
+        self.btn_bearbeiten = QPushButton("Frage bearbeiten")
+        self.btn_weiter = QPushButton("Weiter zur nächsten Frage")
+        btn_layout.addWidget(self.btn_beenden)
+        btn_layout.addWidget(self.btn_bearbeiten)
+        btn_layout.addWidget(self.btn_weiter)
+        layout.addLayout(btn_layout)
+        self.btn_beenden.clicked.connect(self.accept)
+        self.btn_bearbeiten.clicked.connect(self.frage_bearbeiten)
+        self.btn_weiter.clicked.connect(self.antworten_auswerten)
+        self.auswertung_gemacht = False
 
-# Haupt-GUI für Schüler
-class SchuelerQuizApp(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Quiz für Schüler")
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-        # Dropdown für Schülernamen
-        self.schueler_dropdown = QComboBox()
-        self.layout.addWidget(QLabel("Wähle deinen Namen:"))
-        self.layout.addWidget(self.schueler_dropdown)
-        # Filter für Quiz-Sortierung
-        filter_layout = QHBoxLayout()
-        self.quiz_sort_dropdown = QComboBox()
-        self.quiz_sort_dropdown.addItems([
-            "Standard",         # Standard-Sortierung
-            "Wie oft gemacht",  # Nach Häufigkeit
-            "Wann erstellt",    # Nach Erstellungsdatum
-            "Noch nie gemacht"  # Noch nicht bearbeitete Quiz
-        ]) 
-        #TODO: Fehlerhäufigkeiten (falsch - noch nicht richtig - richtig - perfekt)
-        filter_layout.addWidget(QLabel("Quiz sortieren nach:"))
-        filter_layout.addWidget(self.quiz_sort_dropdown)
-        self.layout.addLayout(filter_layout)
-        # Liste der verfügbaren Quiz
-        self.quiz_list = QListWidget()
-        self.layout.addWidget(QLabel("Verfügbare Quiz:"))
-        self.layout.addWidget(self.quiz_list)
-        # Button zum Starten des Quiz
-        self.start_button = QPushButton("Quiz starten")
-        self.layout.addWidget(self.start_button)
-        # Event-Handler verbinden
-        self.start_button.clicked.connect(self.start_quiz)
-        self.quiz_sort_dropdown.currentIndexChanged.connect(self.load_quiz)
-        self.schueler_dropdown.currentIndexChanged.connect(self.load_quiz)
-        # Initiales Laden der Schüler und Quiz
-        self.load_schueler()
-        self.load_quiz()
-
-    def load_schueler(self):
-        # Schülernamen aus DB laden, ggf. "Surren" und "Florian" hinzufügen
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        for name in ["Surren", "Florian"]:
-            c.execute("SELECT id FROM schueler WHERE name = ?", (name,))
-            if not c.fetchone():
-                c.execute("INSERT INTO schueler (name) VALUES (?)", (name,))
-        conn.commit()
-        c.execute("SELECT name FROM schueler")
-        schueler = c.fetchall()
-        self.schueler_dropdown.clear()
-        for s in schueler:
-            self.schueler_dropdown.addItem(s[0])
-        conn.close()
-
-    def load_quiz(self):
-        # Quizliste nach Sortiermodus laden
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        schueler = self.schueler_dropdown.currentText()
-        sort_mode = self.quiz_sort_dropdown.currentText()
-        # Verschiedene Sortiermodi für Quiz-Auswahl
-        query = "SELECT quiz.id, quiz.titel, quiz.rowid, quiz.id FROM quiz"
-        if sort_mode == "Wie oft gemacht" and schueler:
-            # Quiz nach Häufigkeit sortieren
-            query = """
-                SELECT quiz.id, quiz.titel, COUNT(ergebnis.id) as gemacht_count
-                FROM quiz
-                LEFT JOIN ergebnis ON quiz.id = ergebnis.quiz_id AND ergebnis.schueler_id = (SELECT id FROM schueler WHERE name = ?)
-                GROUP BY quiz.id
-                ORDER BY gemacht_count DESC
-            """
-            c.execute(query, (schueler,))
-            quiz = c.fetchall()
-        elif sort_mode == "Wann erstellt":
-            # Quiz nach Erstellungsdatum sortieren
-            query = "SELECT id, titel FROM quiz ORDER BY id DESC"
-            c.execute(query)
-            quiz = c.fetchall()
-        elif sort_mode == "Noch nie gemacht" and schueler:
-            # Quiz, die der Schüler noch nie gemacht hat
-            query = """
-                SELECT quiz.id, quiz.titel
-                FROM quiz
-                WHERE quiz.id NOT IN (
-                    SELECT quiz_id FROM ergebnis WHERE schueler_id = (SELECT id FROM schueler WHERE name = ?)
-                )
-            """
-            c.execute(query, (schueler,))
-            quiz = c.fetchall()
+    def antworten_auswerten(self):
+        if self.auswertung_gemacht:
+            # Nächste Frage laden
+            self.accept()
+            parent = self.parent()
+            if parent:
+                parent.frage_beantworten()
+            return
+        gewaehlte = set(cb.property("antwort_id") for cb in self.antwort_checkboxes if cb.isChecked())
+        scores = lade_scores()
+        frage_id_str = str(self.frage_id)
+        # Richtig: alle richtigen und nur richtige gewählt
+        if gewaehlte == self.richtig_ids:
+            QMessageBox.information(self, "Richtig!", "Super! Alle richtigen Antworten gewählt.")
+            scores[frage_id_str] = scores.get(frage_id_str, 0) - 1
         else:
-            # Standard: alle Quiz anzeigen
-            query = "SELECT id, titel FROM quiz"
-            c.execute(query)
-            quiz = c.fetchall()
-        self.quiz_list.clear()
-        for q in quiz:
-            self.quiz_list.addItem(q[1]) # Quiz-Titel zur Liste hinzufügen
-        conn.close()
+            QMessageBox.warning(self, "Falsch!", f"Falsch beantwortet! Richtige Antwort(en):\n" + self.richtige_antworten_text())
+            scores[frage_id_str] = scores.get(frage_id_str, 0) + 1
+        speichere_scores(scores)
+        self.auswertung_gemacht = True
+        self.btn_weiter.setText("Weiter zur nächsten Frage")
 
-    def start_quiz(self):
-        # Quiz starten, QuizDialog öffnen
-        schueler = self.schueler_dropdown.currentText()
-        quiz_item = self.quiz_list.currentItem()
-        if not schueler or not quiz_item:
-            QMessageBox.warning(self, "Fehler", "Bitte wähle einen Schüler und ein Quiz aus.")
-            return
-        # Quiz-ID aus DB holen
+    def richtige_antworten_text(self):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("SELECT id FROM quiz WHERE titel = ?", (quiz_item.text(),))
-        quiz_row = c.fetchone()
+        c.execute("SELECT antwort_text FROM antwort WHERE frage_id = ? AND ist_richtig = 1", (self.frage_id,))
+        richtige = [row[0] for row in c.fetchall()]
         conn.close()
-        if not quiz_row:
-            QMessageBox.warning(self, "Fehler", "Quiz nicht gefunden.")
-            return
-        quiz_id = quiz_row[0]
-        # QuizDialog anzeigen, Ergebnis wird nach Schließen nicht erneut angezeigt
-        dialog = QuizDialog(schueler, quiz_id, quiz_item.text())
+        return "\n".join(richtige)
+
+    def frage_bearbeiten(self):
+        dialog = FrageBearbeitenDialog(self.frage_id, self)
         dialog.exec()
 
-class QuizScoreWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Quiz-Score Übersicht")
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        # Übersicht: Anzahl beantworteter Fragen
-        self.score_label = QLabel()
-        self.layout.addWidget(self.score_label)
-        self.update_score_overview()
-
-        # Button: Fragen anzeigen
-        self.btn_show_questions = QPushButton("Fragen anzeigen")
-        self.btn_show_questions.clicked.connect(self.show_questions)
-        self.layout.addWidget(self.btn_show_questions)
-
-        # Button: Neue Frage erstellen
-        self.btn_new_question = QPushButton("Neue Frage erstellen")
-        self.btn_new_question.clicked.connect(self.create_new_question)
-        self.layout.addWidget(self.btn_new_question)
-
-        # Button: Beenden & Git
-        self.btn_quit = QPushButton("Beenden & Git")
-        self.btn_quit.clicked.connect(self.quit_and_git)
-        self.layout.addWidget(self.btn_quit)
-
-    #def update_score_overview(self):
-     #   conn = sqlite3.connect(DB_PATH) # Zugriff auf globalen DB_PATH
-      #  c = conn.cursor()
-       # # Anzahl beantworteter Fragen (Summe aller gegebene_antwort)
-       # c.execute("SELECT COUNT(*) FROM gegebene_antwort")
-       # count = c.fetchone()[0]
-       # conn.close()
-       # self.score_label.setText(f"Beantwortete Fragen: {count}")
-#TODO: ändern auf json lokal speichern und laden statt in der datenbank
-
-    def show_questions(self):
-        # Zeigt alle Fragen mit Antwortmöglichkeiten in einem Dialog
-        # Redundante lokale Imports entfernt, um globalen DB_PATH zu verwenden
-        conn = sqlite3.connect(DB_PATH) 
+# Dialog zum Bearbeiten einer Frage
+class FrageBearbeitenDialog(QDialog):
+    def __init__(self, frage_id, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Frage bearbeiten")
+        self.frage_id = frage_id
+        layout = QVBoxLayout(self)
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("SELECT frage.id, frage.frage_text FROM frage")
-        fragen = c.fetchall()
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Alle Fragen anzeigen")
-        layout = QVBoxLayout(dialog)
-        for frage_id, frage_text in fragen:
-            layout.addWidget(QLabel(f"Frage: {frage_text}"))
-            c.execute("SELECT antwort_text FROM antwort WHERE frage_id = ?", (frage_id,))
-            antworten = c.fetchall()
-            for antwort_text, in antworten:
-                layout.addWidget(QLabel(f"Antwort: {antwort_text}"))
-        conn.close()
-        btn_close = QPushButton("Schließen")
-        btn_close.clicked.connect(dialog.accept)
-        layout.addWidget(btn_close)
-        dialog.exec()
-
-    def create_new_question(self):
-        # Dialog zum Erstellen einer neuen Frage
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Neue Frage erstellen")
-        layout = QVBoxLayout(dialog)
-        frage_input = QLineEdit()
+        frage_row = c.execute("SELECT frage_text FROM frage WHERE id = ?", (frage_id,)).fetchone()
+        self.frage_input = QLineEdit(frage_row[0] if frage_row else "")
         layout.addWidget(QLabel("Fragetext:"))
-        layout.addWidget(frage_input)
-        antwort_inputs = []
-        for i in range(4):
-            antwort_input = QLineEdit()
-            layout.addWidget(QLabel(f"Antwort {i+1}:"))
-            layout.addWidget(antwort_input)
-            antwort_inputs.append(antwort_input)
-        richtig_dropdown = QComboBox()
-        richtig_dropdown.addItems(["Antwort 1", "Antwort 2", "Antwort 3", "Antwort 4"])
-        layout.addWidget(QLabel("Richtige Antwort wählen:"))
-        layout.addWidget(richtig_dropdown)
+        layout.addWidget(self.frage_input)
+        self.antwort_inputs = []
+        self.richtig_checks = []
+        c.execute("SELECT id, antwort_text, ist_richtig FROM antwort WHERE frage_id = ?", (frage_id,))
+        antworten = c.fetchall()
+        for antwort_id, antwort_text, ist_richtig in antworten:
+            h = QHBoxLayout()
+            inp = QLineEdit(antwort_text)
+            chk = QCheckBox("Richtig")
+            chk.setChecked(bool(ist_richtig))
+            h.addWidget(inp)
+            h.addWidget(chk)
+            layout.addLayout(h)
+            self.antwort_inputs.append((antwort_id, inp))
+            self.richtig_checks.append(chk)
+        conn.close()
         btn_save = QPushButton("Speichern")
         layout.addWidget(btn_save)
-        btn_cancel = QPushButton("Abbrechen")
-        layout.addWidget(btn_cancel)
-        def save_question():
-            frage_text = frage_input.text().strip()
-            antworten = [a.text().strip() for a in antwort_inputs]
-            richtig_index = richtig_dropdown.currentIndex()
-            if not frage_text or not all(antworten):
-                QMessageBox.warning(dialog, "Fehler", "Bitte alle Felder ausfüllen.")
-                return
-            
-            # Redundante lokale Imports entfernt, um globalen DB_PATH zu verwenden
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            
-            # Annahme: Alle neuen Fragen gehören zum Quiz mit ID 1
-            c.execute("INSERT INTO frage (frage_text, quiz_id) VALUES (?, 1)", (frage_text,))
-            frage_id = c.lastrowid
-            for idx, antwort_text in enumerate(antworten):
-                ist_richtig = 1 if idx == richtig_index else 0
-                c.execute("INSERT INTO antwort (antwort_text, frage_id, ist_richtig) VALUES (?, ?, ?)", (antwort_text, frage_id, ist_richtig))
-            conn.commit()
-            conn.close()
-            QMessageBox.information(dialog, "Erfolg", "Frage wurde gespeichert.")
-            dialog.accept()
-            self.update_score_overview()
-        btn_save.clicked.connect(save_question)
-        btn_cancel.clicked.connect(dialog.reject)
-        dialog.exec()
+        btn_save.clicked.connect(self.speichern)
 
-    def quit_and_git(self):
-        # Fenster schließen und Git-Push ausführen (einheitlich aus main.py)
-        git_push()
-        self.close()
+    def speichern(self):
+        frage_text = self.frage_input.text().strip()
+        if not frage_text:
+            QMessageBox.warning(self, "Fehler", "Fragetext darf nicht leer sein.")
+            return
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("UPDATE frage SET frage_text = ? WHERE id = ?", (frage_text, self.frage_id))
+        for (antwort_id, inp), chk in zip(self.antwort_inputs, self.richtig_checks):
+            antwort_text = inp.text().strip()
+            ist_richtig = 1 if chk.isChecked() else 0
+            c.execute("UPDATE antwort SET antwort_text = ?, ist_richtig = ? WHERE id = ?", (antwort_text, ist_richtig, antwort_id))
+        conn.commit()
+        conn.close()
+        QMessageBox.information(self, "Erfolg", "Frage aktualisiert.")
+        self.accept()
+
+# Dialog zum Hinzufügen einer neuen Frage
+class FrageHinzufuegenDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Frage hinzufügen")
+        layout = QVBoxLayout(self)
+        self.frage_input = QLineEdit()
+        layout.addWidget(QLabel("Fragetext:"))
+        layout.addWidget(self.frage_input)
+        self.antwort_inputs = []
+        self.richtig_checks = []
+        for i in range(4):
+            h = QHBoxLayout()
+            inp = QLineEdit()
+            chk = QCheckBox("Richtig")
+            h.addWidget(QLabel(f"Antwort {i+1}:"))
+            h.addWidget(inp)
+            h.addWidget(chk)
+            layout.addLayout(h)
+            self.antwort_inputs.append(inp)
+            self.richtig_checks.append(chk)
+        btn_save = QPushButton("Speichern")
+        layout.addWidget(btn_save)
+        btn_save.clicked.connect(self.speichern)
+
+    def speichern(self):
+        frage_text = self.frage_input.text().strip()
+        antworten = [inp.text().strip() for inp in self.antwort_inputs if inp.text().strip()]
+        richtig = [chk.isChecked() for chk in self.richtig_checks][:len(antworten)]
+        if not frage_text or len(antworten) < 2:
+            QMessageBox.warning(self, "Fehler", "Mindestens 2 Antworten und Fragetext erforderlich.")
+            return
+        if not any(richtig):
+            QMessageBox.warning(self, "Fehler", "Mindestens eine Antwort muss als richtig markiert sein.")
+            return
+        if len(antworten) > 4:
+            QMessageBox.warning(self, "Fehler", "Maximal 4 Antworten erlaubt.")
+            return
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        # Neue ID generieren
+        c.execute("SELECT MAX(id) FROM frage")
+        max_id = c.fetchone()[0]
+        neue_id = int(max_id)+1 if max_id else 1
+        c.execute("INSERT INTO frage (id, frage_text, quiz_id) VALUES (?, ?, 1)", (neue_id, frage_text))
+        for idx, antwort_text in enumerate(antworten):
+            ist_richtig = 1 if richtig[idx] else 0
+            c.execute("INSERT INTO antwort (antwort_text, frage_id, ist_richtig) VALUES (?, ?, ?)", (antwort_text, neue_id, ist_richtig))
+        conn.commit()
+        conn.close()
+        QMessageBox.information(self, "Erfolg", "Frage hinzugefügt.")
+        self.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = QuizScoreWindow()
+    window = QuizMainWindow()
     window.show()
     sys.exit(app.exec())
