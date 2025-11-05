@@ -1,0 +1,7 @@
+# Minimal project requirements
+PySide6>=6.5
+
+# Development (optional)
+# pytest
+# black
+# ruff
