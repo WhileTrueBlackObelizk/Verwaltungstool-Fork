@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QInputDialog, QLineEdit, QFrame
 )
 from PySide6.QtCore import QTimer, Qt
+from PySide6.QtWidgets import QMessageBox
 import sys
 from news.news_main import get_news, delete_old_news, add_news_item
 # Quotes-Import
@@ -12,6 +13,13 @@ from password.password_main import PasswordWindow
 from quiz.quiz_main import QuizMainWindow
 from utils.git_utils import git_pull, git_push, git_merge
 from attendance_calendar.date_attendance_main import AttendanceCalendar
+# Zahlensysteme-Funktionen (nur Quiz-Funktionen verwenden, GUI nicht verändern)
+from zahlensysteme.main.fuctions import (
+    binaer_zu_dezi,
+    dezi_zu_binaer,
+    dezi_zu_hexadezi,
+    hexadezi_zu_dezi,
+)
 
 
 class NewsFenster(QWidget):
@@ -170,6 +178,11 @@ class MainWindow(QMainWindow):
         btn_quizscore.clicked.connect(self.oeffne_quizscore)
         top_layout.addWidget(btn_quizscore)
 
+        # Neuer Button für Zahlensysteme zwischen Quiz und Passwortgenerator
+        btn_zahlensysteme = QPushButton("Zahlensysteme")
+        btn_zahlensysteme.clicked.connect(self.oeffne_zahlensysteme)
+        top_layout.addWidget(btn_zahlensysteme)
+
         btn_password = QPushButton("Passwortgenerator")
         btn_password.clicked.connect(self.oeffne_password)
         top_layout.addWidget(btn_password)
@@ -243,6 +256,56 @@ class MainWindow(QMainWindow):
     def git_auto_pull(self):
         git_pull()
         self.news_fenster.reload_news()
+
+    def ask_and_check(self, module, parent=None):
+        try:
+            prompt, answer, input_type = module.get_quiz()
+        except Exception as e:
+            QMessageBox.warning(parent or self, "Fehler", f"Quiz kann nicht geladen werden: {e}")
+            return
+
+        text, ok = QInputDialog.getText(parent or self, "Quiz", prompt)
+        if not ok:
+            return
+        if input_type == 'int':
+            try:
+                user = int(text)
+            except ValueError:
+                QMessageBox.warning(parent or self, "Fehler", "Bitte eine Zahl eingeben!")
+                return
+            correct = (user == answer)
+        else:
+            user = text.strip().upper()
+            correct = (user == str(answer).upper())
+
+        if correct:
+            QMessageBox.information(parent or self, "Ergebnis", "Richtig!")
+        else:
+            QMessageBox.information(parent or self, "Ergebnis", f"Falsch! Richtig wäre: {answer}")
+
+    def oeffne_zahlensysteme(self):
+        # Erstellt ein eingebettetes Fenster für die Zahlensystem-Tools (verwendet vorhandene get_quiz)
+        self.zahl_window = QWidget()
+        self.zahl_window.setWindowTitle("Zahlensysteme")
+        layout = QVBoxLayout()
+
+        btn1 = QPushButton("Binär -> Dezimal")
+        btn2 = QPushButton("Dezimal -> Binär")
+        btn3 = QPushButton("Dezimal -> Hexadezimal")
+        btn4 = QPushButton("Hexadezimal -> Dezimal")
+        btn5 = QPushButton("Beenden")
+
+        btn1.clicked.connect(lambda: self.ask_and_check(binaer_zu_dezi, self.zahl_window))
+        btn2.clicked.connect(lambda: self.ask_and_check(dezi_zu_binaer, self.zahl_window))
+        btn3.clicked.connect(lambda: self.ask_and_check(dezi_zu_hexadezi, self.zahl_window))
+        btn4.clicked.connect(lambda: self.ask_and_check(hexadezi_zu_dezi, self.zahl_window))
+        btn5.clicked.connect(self.zahl_window.close)
+
+        for btn in (btn1, btn2, btn3, btn4, btn5):
+            layout.addWidget(btn)
+
+        self.zahl_window.setLayout(layout)
+        self.zahl_window.show()
 
     def beenden(self):
         git_push()
