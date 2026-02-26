@@ -13,6 +13,7 @@ from password.password_main import PasswordWindow
 from quiz.quiz_main import QuizMainWindow
 from utils.git_utils import git_pull, git_push, git_merge
 from attendance_calendar.date_attendance_main import AttendanceCalendar
+from Elekrotechnick.gui import ElektroGUI
 # Zahlensysteme-Funktionen (nur Quiz-Funktionen verwenden, GUI nicht verändern)
 from zahlensysteme.main.fuctions import (
     binaer_zu_dezi,
@@ -183,6 +184,10 @@ class MainWindow(QMainWindow):
         btn_zahlensysteme.clicked.connect(self.oeffne_zahlensysteme)
         top_layout.addWidget(btn_zahlensysteme)
 
+        btn_elektro = QPushButton("Elektrotechnik")
+        btn_elektro.clicked.connect(self.oeffne_elektrotechnik)
+        top_layout.addWidget(btn_elektro)
+
         btn_password = QPushButton("Passwortgenerator")
         btn_password.clicked.connect(self.oeffne_password)
         top_layout.addWidget(btn_password)
@@ -247,6 +252,10 @@ class MainWindow(QMainWindow):
     def oeffne_quizscore(self):
         self.quiz_window = QuizMainWindow()
         self.quiz_window.show()
+
+    def oeffne_elektrotechnik(self):
+        self.elektro_window = ElektroGUI()
+        self.elektro_window.show()
 
     def git_update(self):
         git_pull()

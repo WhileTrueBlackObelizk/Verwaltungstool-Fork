@@ -1,0 +1,29 @@
+{
+  "aufgaben": [
+    {
+      "id": 1,
+      "png": "1.Aufgabe.png",
+      "ergebnis": "0,4"
+    },
+    {
+      "id": 2,
+      "png": "2.Aufgabe.png",
+      "ergebnis": "414"
+    },
+    {
+      "id": 3,
+      "png": "3.Aufgabe.png",
+      "ergebnis": "2,4"
+    },
+    {
+      "id": 4,
+      "png": "4.Aufgabe.png",
+      "ergebnis": "10,8"
+    },
+    {
+      "id": 5,
+      "png": "5.Aufgabe.png",
+      "ergebnis": "6,52173913"
+    }
+  ]
+}
