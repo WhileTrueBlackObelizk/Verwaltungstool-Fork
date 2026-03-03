@@ -10,36 +10,25 @@
 #-----------------------------
 # importe <-------------------
 #-----------------------------
-import random
+import secrets
 import string
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel
 #-----------------------------
 # passwort <------------------
 #-----------------------------
-def generate_random_password(length=8):
+def generate_random_password(length=12):
     """
-    hier wird ein passwort generiert mit einer länge von 8 zeichen standardmäßig
-    Das passwort enthält mindestens einen Großbuchstaben, eine Zahl und ein Sonderzeichen(10 = chars 8 zeichen lang + die beiden sonder regeln )
-    
-    :param length: Länge des generierten Passworts
-    :return: Generiertes Passwort als String
-
-    anpassbar durch den length parameter
-    8 zeichen = 10 chars (1 uppercase, 1 special char, 8 digits)
-    einfach ändern um längere passwörter zu generieren
+    Generiert ein kryptographisch sicheres Passwort der angegebenen Länge.
+    Enthält mindestens einen Großbuchstaben, eine Ziffer und ein Sonderzeichen.
+    Verwendet secrets statt random (kryptographisch sicher).
     """
-    Uppercase_char = random.choice(string.ascii_uppercase)
-    chars = string.digits
-    a = ''.join(random.choice(chars) for _ in range(length))
-    special_chars = "!@#$%^&*()"
-    special_chars = ''.join(random.choice(special_chars) for _ in range(1))
-    final_password = Uppercase_char + a + special_chars
-    print(final_password)
-    return final_password
-
-generate_random_password(8)
-
-
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*()"
+    while True:
+        password = ''.join(secrets.choice(alphabet) for _ in range(length))
+        if (any(c.isupper() for c in password)
+                and any(c.isdigit() for c in password)
+                and any(c in "!@#$%^&*()" for c in password)):
+            return password
 
 class PasswordWindow(QWidget):
     """
@@ -80,5 +69,5 @@ class PasswordWindow(QWidget):
         8 zeichen lang + 2 sonderregelzeichen = 10 chars
         1 großbuchstabe, 1 sonderzeichen, 8 zahlen
         """
-        password = generate_random_password(8)
+        password = generate_random_password(12)
         self.password_field.setText(password)

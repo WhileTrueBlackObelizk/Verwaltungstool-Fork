@@ -1,12 +1,11 @@
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout,
-    QHBoxLayout, QLabel, QInputDialog, QLineEdit, QFrame
+    QHBoxLayout, QLabel, QInputDialog, QLineEdit, QFrame, QGridLayout,
+    QSizePolicy, QMessageBox
 )
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtWidgets import QMessageBox
 import sys
 from news.news_main import get_news, delete_old_news, add_news_item
-# Quotes-Import
 from quotes.quotes_main import get_quotes, add_quotes as add_quote_item
 from counter.counter_main import CounterDialog
 from password.password_main import PasswordWindow
@@ -14,229 +13,246 @@ from quiz.quiz_main import QuizMainWindow
 from utils.git_utils import git_pull, git_push, git_merge
 from attendance_calendar.date_attendance_main import AttendanceCalendar
 from Elekrotechnick.gui import ElektroGUI
-# Zahlensysteme-Funktionen (nur Quiz-Funktionen verwenden, GUI nicht verändern)
 from zahlensysteme.main.fuctions import (
     binaer_zu_dezi,
     dezi_zu_binaer,
     dezi_zu_hexadezi,
     hexadezi_zu_dezi,
 )
+from apple_theme import APPLE_STYLESHEET
 
 
-class NewsFenster(QWidget):
-    def __init__(self):
+# ── Hilfsfunktion: Card-Frame ────────────────────────────────────────────────
+
+def make_card(layout_inner: QVBoxLayout) -> QFrame:
+    """Gibt einen weißen Card-Frame mit abgerundeten Ecken zurück."""
+    frame = QFrame()
+    frame.setProperty("card", True)
+    frame.setLayout(layout_inner)
+    frame.setStyleSheet(
+        "QFrame[card='true'] {"
+        "  background: white;"
+        "  border-radius: 12px;"
+        "  padding: 12px;"
+        "}"
+    )
+    return frame
+
+
+# ── Carousel-Panel (News & Memos) ─────────────────────────────────────────────
+
+class CarouselPanel(QWidget):
+    """Wiederverwendbares Rotations-Panel für News und Memos."""
+    def __init__(self, title, get_fn, add_fn, dialog_title, dialog_label):
         super().__init__()
-        self.news_list = get_news()
-        
-        # Fallback für leere Liste
-        if not self.news_list:
-            self.news_list = ["Keine News vorhanden. Klicke 'Neu' um eine zu erstellen."]
-        
-        self.current_index = 0
-        
-        layout = QVBoxLayout()
-        self.label = QLabel(self.news_list[self.current_index])
-        self.label.setWordWrap(True)
-        layout.addWidget(self.label)
+        self._get_fn = get_fn
+        self._add_fn = add_fn
+        self._dialog_title = dialog_title
+        self._dialog_label = dialog_label
 
-        button_layout = QHBoxLayout()
-        btn_prev = QPushButton("Zurück")
+        self.items = get_fn()
+        self.current_index = 0
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        inner = QVBoxLayout()
+        inner.setSpacing(8)
+
+        header = QLabel(title)
+        header.setStyleSheet("font-size: 15px; font-weight: 600; color: #1C1C1E; background: transparent;")
+        inner.addWidget(header)
+
+        self.label = QLabel(self.items[self.current_index])
+        self.label.setWordWrap(True)
+        self.label.setStyleSheet("color: #3A3A3C; background: transparent; font-size: 13px;")
+        self.label.setAlignment(Qt.AlignTop)
+        self.label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        inner.addWidget(self.label)
+        inner.addStretch()
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(6)
+
+        btn_prev = QPushButton("‹")
+        btn_prev.setFixedSize(32, 32)
+        btn_prev.setStyleSheet(
+            "QPushButton { background: #E5E5EA; color: #1C1C1E; border-radius: 8px; "
+            "font-size: 16px; border: none; }"
+            "QPushButton:hover { background: #D1D1D6; }"
+        )
         btn_prev.clicked.connect(self.show_prev)
-        btn_new = QPushButton("Neu")
-        btn_new.clicked.connect(self.add_news)
-        btn_next = QPushButton("Nächste")
+
+        btn_next = QPushButton("›")
+        btn_next.setFixedSize(32, 32)
+        btn_next.setStyleSheet(
+            "QPushButton { background: #E5E5EA; color: #1C1C1E; border-radius: 8px; "
+            "font-size: 16px; border: none; }"
+            "QPushButton:hover { background: #D1D1D6; }"
+        )
         btn_next.clicked.connect(self.show_next_immediately)
-        button_layout.addWidget(btn_prev)
-        button_layout.addWidget(btn_new)
-        button_layout.addWidget(btn_next)
-        layout.addLayout(button_layout)
-        self.setLayout(layout)
+
+        btn_new = QPushButton("＋")
+        btn_new.setFixedSize(32, 32)
+        btn_new.setStyleSheet(
+            "QPushButton { background: #007AFF; color: white; border-radius: 8px; "
+            "font-size: 16px; border: none; }"
+            "QPushButton:hover { background: #0062CC; }"
+        )
+        btn_new.clicked.connect(self.add_item)
+
+        btn_row.addWidget(btn_prev)
+        btn_row.addWidget(btn_next)
+        btn_row.addStretch()
+        btn_row.addWidget(btn_new)
+        inner.addLayout(btn_row)
+
+        outer.addWidget(make_card(inner))
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.show_next)
-        self.timer.start(45000)  # 45 Sekunden
+        self.timer.start(45000)
 
     def show_next(self):
-        if len(self.news_list) <= 1:
-            return  # Kein Weiterschalten wenn nur 1 Eintrag
-        self.current_index = (self.current_index + 1) % len(self.news_list)
-        self.label.setText(self.news_list[self.current_index])
+        if len(self.items) <= 1:
+            return
+        self.current_index = (self.current_index + 1) % len(self.items)
+        self.label.setText(self.items[self.current_index])
 
     def show_prev(self):
-        if len(self.news_list) <= 1:
-            return  # Kein Zurückschalten wenn nur 1 Eintrag
-        self.current_index = (self.current_index - 1) % len(self.news_list)
-        self.label.setText(self.news_list[self.current_index])
+        if len(self.items) <= 1:
+            return
+        self.current_index = (self.current_index - 1) % len(self.items)
+        self.label.setText(self.items[self.current_index])
 
     def show_next_immediately(self):
         self.timer.stop()
         self.show_next()
         self.timer.start(45000)
 
-    def reload_news(self):
-        self.news_list = get_news()
-        
-        # Fallback für leere Liste
-        if not self.news_list:
-            self.news_list = ["Keine News vorhanden."]
-        
-        # Index zurücksetzen wenn außerhalb der neuen Liste
-        if self.current_index >= len(self.news_list):
+    def reload(self):
+        self.items = self._get_fn()
+        if self.current_index >= len(self.items):
             self.current_index = 0
-        
-        self.label.setText(self.news_list[self.current_index])
+        self.label.setText(self.items[self.current_index])
 
-    def add_news(self):
-        text, ok = QInputDialog.getText(self, "Neue News", "News-Text eingeben:", QLineEdit.Normal)
+    def add_item(self):
+        text, ok = QInputDialog.getText(self, self._dialog_title, self._dialog_label, QLineEdit.Normal)
         if ok and text.strip():
             try:
-                from datetime import datetime
-                created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                add_news_item(text, "news/news.db", created_at)
-                self.reload_news()
+                self._add_fn(text)
+                self.reload()
             except Exception as e:
-                print(f"Fehler beim Hinzufügen: {e}")
                 self.label.setText(f"Fehler: {e}")
 
-class QuotesFenster(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.quotes_list = get_quotes()
-        self.current_index = 0
 
-        layout = QVBoxLayout()
-        self.label = QLabel(self.quotes_list[self.current_index])
-        self.label.setWordWrap(True)
-        layout.addWidget(self.label)
-
-        button_layout = QHBoxLayout()
-        btn_prev = QPushButton("Zurück")
-        btn_prev.clicked.connect(self.show_prev)
-        btn_new = QPushButton("Neu")
-        btn_new.clicked.connect(self.add_quote)
-        btn_next = QPushButton("Nächste")
-        btn_next.clicked.connect(self.show_next_immediately)
-        button_layout.addWidget(btn_prev)
-        button_layout.addWidget(btn_new)
-        button_layout.addWidget(btn_next)
-        layout.addLayout(button_layout)
-        self.setLayout(layout)
-
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.show_next)
-        self.timer.start(45000)  # 45 Sekunden
-
-    def show_prev(self):
-        self.current_index = (self.current_index - 1) % len(self.quotes_list)
-        self.label.setText(self.quotes_list[self.current_index])
-
-    def show_next(self):
-        self.current_index = (self.current_index + 1) % len(self.quotes_list)
-        self.label.setText(self.quotes_list[self.current_index])
-
-    def show_next_immediately(self):
-        self.timer.stop()
-        self.show_next()
-        self.timer.start(45000)
-
-    def reload_quotes(self):
-        self.quotes_list = get_quotes()
-        self.label.setText(self.quotes_list[self.current_index])
-
-    def add_quote(self):
-        text, ok = QInputDialog.getText(self, "Neues Zitat", "Zitat-Text eingeben:", QLineEdit.Normal)
-        if ok and text.strip():
-            add_quote_item(text, "quotes/quotes.db")
-            git_push()
-            self.reload_quotes()
+# ── Hauptfenster ─────────────────────────────────────────────────────────────
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Verwaltungstool")
+        self.setMinimumSize(820, 560)
 
-        # --- Git- und News-Initialisierung beim Start ---
+        # Git-Initialisierung beim Start
         git_pull()
         git_merge()
         delete_old_news("news/news.db")
         git_push()
 
-        main_widget = QWidget()
-        main_layout = QVBoxLayout()
+        root = QWidget()
+        root_layout = QVBoxLayout(root)
+        root_layout.setContentsMargins(20, 20, 20, 16)
+        root_layout.setSpacing(16)
 
-        # Obere Buttons
-        top_layout = QHBoxLayout()
+        # ── Titelzeile ────────────────────────────────────────
+        title_row = QHBoxLayout()
+        title = QLabel("Verwaltungstool")
+        title.setStyleSheet(
+            "font-size: 20px; font-weight: 700; color: #1C1C1E; background: transparent;"
+        )
+        title_row.addWidget(title)
+        title_row.addStretch()
 
-        btn_anwesenheit = QPushButton("Anwesenheitskalender")
-        btn_anwesenheit.clicked.connect(self.oeffne_anwesenheit)
-        top_layout.addWidget(btn_anwesenheit)
+        btn_update = QPushButton("Aktualisieren")
+        btn_update.setFixedHeight(32)
+        btn_update.setStyleSheet(
+            "QPushButton { background: #E5E5EA; color: #1C1C1E; border-radius: 8px; "
+            "padding: 0 14px; font-size: 13px; border: none; }"
+            "QPushButton:hover { background: #D1D1D6; }"
+        )
+        btn_update.clicked.connect(self.git_update)
+        title_row.addWidget(btn_update)
+        root_layout.addLayout(title_row)
 
-        btn_counter = QPushButton("Störungs Counter")
-        btn_counter.clicked.connect(self.oeffne_counter)
-        top_layout.addWidget(btn_counter)
+        # ── Modul-Grid (2 × 3) ───────────────────────────────
+        MODULE_BUTTONS = [
+            ("Anwesenheit",   "📅", self.oeffne_anwesenheit),
+            ("Störungszähler","⚠️",  self.oeffne_counter),
+            ("Quiz",          "🧠", self.oeffne_quizscore),
+            ("Zahlensysteme", "🔢", self.oeffne_zahlensysteme),
+            ("Elektrotechnik","⚡", self.oeffne_elektrotechnik),
+            ("Passwort",      "🔑", self.oeffne_password),
+        ]
 
-        btn_quizscore = QPushButton("Quiz starten")
-        btn_quizscore.clicked.connect(self.oeffne_quizscore)
-        top_layout.addWidget(btn_quizscore)
+        grid = QGridLayout()
+        grid.setSpacing(10)
+        for idx, (label, icon, slot) in enumerate(MODULE_BUTTONS):
+            btn = QPushButton(f"{icon}\n{label}")
+            btn.setProperty("module", True)
+            btn.setMinimumHeight(70)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.clicked.connect(slot)
+            grid.addWidget(btn, idx // 3, idx % 3)
 
-        # Neuer Button für Zahlensysteme zwischen Quiz und Passwortgenerator
-        btn_zahlensysteme = QPushButton("Zahlensysteme")
-        btn_zahlensysteme.clicked.connect(self.oeffne_zahlensysteme)
-        top_layout.addWidget(btn_zahlensysteme)
+        root_layout.addLayout(grid)
 
-        btn_elektro = QPushButton("Elektrotechnik")
-        btn_elektro.clicked.connect(self.oeffne_elektrotechnik)
-        top_layout.addWidget(btn_elektro)
+        # ── News + Memos nebeneinander ────────────────────────
+        panels = QHBoxLayout()
+        panels.setSpacing(12)
+        self.news_panel = CarouselPanel(
+            "News", get_news,
+            lambda text: add_news_item(text),
+            "Neue News", "News-Text eingeben:",
+        )
+        self.memos_panel = CarouselPanel(
+            "Memos", get_quotes,
+            lambda text: (add_quote_item(text), git_push()),
+            "Neues Memo", "Memo-Text eingeben:",
+        )
+        self.news_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.memos_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        panels.addWidget(self.news_panel)
+        panels.addWidget(self.memos_panel)
+        root_layout.addLayout(panels, stretch=1)
 
-        btn_password = QPushButton("Passwortgenerator")
-        btn_password.clicked.connect(self.oeffne_password)
-        top_layout.addWidget(btn_password)
-        
-        main_layout.addLayout(top_layout)
+        # ── Footer ────────────────────────────────────────────
+        footer = QHBoxLayout()
+        branding = QLabel("Umschulungsgruppe · 03/2025 – 03/2027")
+        branding.setStyleSheet("color: #8E8E93; font-size: 11px; background: transparent;")
+        footer.addWidget(branding)
+        footer.addStretch()
 
-        # Mittlere Info-Fenster
-        middle_layout = QHBoxLayout()
-        self.news_fenster = NewsFenster()
-        self.quotes_fenster = QuotesFenster()
-        middle_layout.addWidget(self.news_fenster)
-        middle_layout.addWidget(self.quotes_fenster)
-        main_layout.addLayout(middle_layout)
+        btn_quit = QPushButton("Beenden")
+        btn_quit.setFixedHeight(30)
+        btn_quit.setStyleSheet(
+            "QPushButton { background: #FF3B30; color: white; border-radius: 8px; "
+            "padding: 0 14px; font-size: 13px; border: none; }"
+            "QPushButton:hover { background: #CC2F26; }"
+        )
+        btn_quit.clicked.connect(self.beenden)
+        footer.addWidget(btn_quit)
+        root_layout.addLayout(footer)
 
-        # Untere Buttons
-        bottom_layout = QHBoxLayout()
-        # Branding-Box unten links
-        branding_layout = QHBoxLayout()
-        branding_frame = QFrame()
-        branding_frame.setStyleSheet("background-color: white; border: 1px solid #ccc;")
-        branding_inner = QHBoxLayout()
-        logo = QLabel()
-        logo.setFixedSize(15, 15)
-        logo.setStyleSheet("background-color: #bbb; border: 1px solid #888;")  # Platzhalter für Logo
-        branding_inner.addWidget(logo)
-        branding_text = QLabel("MAKE BY UMSCHULUNGS GRUPPE FROM 03.2025-03.2027")
-        branding_inner.addWidget(branding_text)
-        branding_frame.setLayout(branding_inner)
-        branding_layout.addWidget(branding_frame)
-        branding_layout.addStretch()
-        bottom_layout.addLayout(branding_layout)
+        self.setCentralWidget(root)
 
-        bottom_layout.addStretch()
-        btn_beenden = QPushButton("Beenden")
-        btn_beenden.clicked.connect(self.beenden)
-        bottom_layout.addWidget(btn_beenden)
-        btn_aktualisieren = QPushButton("Aktualisieren")
-        btn_aktualisieren.clicked.connect(self.git_update)
-        bottom_layout.addWidget(btn_aktualisieren)
-        main_layout.addLayout(bottom_layout)
-
-        main_widget.setLayout(main_layout)
-        self.setCentralWidget(main_widget)
-
-        # Timer für automatisches Git Pull alle 60 Sekunden
+        # Auto-Pull alle 60 Sekunden
         self.git_timer = QTimer(self)
         self.git_timer.timeout.connect(self.git_auto_pull)
-        self.git_timer.start(60000)  #TODO: wieder auf 60 Sekunden ändern
-    
+        self.git_timer.start(60000)
+
+    # ── Slot-Methoden ─────────────────────────────────────────
+
     def oeffne_anwesenheit(self):
         self.anwesenheit_window = AttendanceCalendar()
         self.anwesenheit_window.show()
@@ -260,11 +276,11 @@ class MainWindow(QMainWindow):
     def git_update(self):
         git_pull()
         git_merge()
-        self.news_fenster.reload_news()
+        self.news_panel.reload()
 
     def git_auto_pull(self):
         git_pull()
-        self.news_fenster.reload_news()
+        self.news_panel.reload()
 
     def ask_and_check(self, module, parent=None):
         try:
@@ -293,38 +309,44 @@ class MainWindow(QMainWindow):
             QMessageBox.information(parent or self, "Ergebnis", f"Falsch! Richtig wäre: {answer}")
 
     def oeffne_zahlensysteme(self):
-        # Erstellt ein eingebettetes Fenster für die Zahlensystem-Tools (verwendet vorhandene get_quiz)
         self.zahl_window = QWidget()
         self.zahl_window.setWindowTitle("Zahlensysteme")
         layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
 
-        btn1 = QPushButton("Binär -> Dezimal")
-        btn2 = QPushButton("Dezimal -> Binär")
-        btn3 = QPushButton("Dezimal -> Hexadezimal")
-        btn4 = QPushButton("Hexadezimal -> Dezimal")
-        btn5 = QPushButton("Beenden")
-
-        btn1.clicked.connect(lambda: self.ask_and_check(binaer_zu_dezi, self.zahl_window))
-        btn2.clicked.connect(lambda: self.ask_and_check(dezi_zu_binaer, self.zahl_window))
-        btn3.clicked.connect(lambda: self.ask_and_check(dezi_zu_hexadezi, self.zahl_window))
-        btn4.clicked.connect(lambda: self.ask_and_check(hexadezi_zu_dezi, self.zahl_window))
-        btn5.clicked.connect(self.zahl_window.close)
-
-        for btn in (btn1, btn2, btn3, btn4, btn5):
+        for label, module in [
+            ("Binär → Dezimal",      binaer_zu_dezi),
+            ("Dezimal → Binär",      dezi_zu_binaer),
+            ("Dezimal → Hexadezimal",dezi_zu_hexadezi),
+            ("Hexadezimal → Dezimal",hexadezi_zu_dezi),
+        ]:
+            btn = QPushButton(label)
+            btn.clicked.connect(lambda _, m=module: self.ask_and_check(m, self.zahl_window))
             layout.addWidget(btn)
 
+        btn_close = QPushButton("Schließen")
+        btn_close.setStyleSheet(
+            "QPushButton { background: #E5E5EA; color: #1C1C1E; border-radius: 8px; "
+            "padding: 8px 18px; border: none; }"
+            "QPushButton:hover { background: #D1D1D6; }"
+        )
+        btn_close.clicked.connect(self.zahl_window.close)
+        layout.addSpacing(4)
+        layout.addWidget(btn_close)
+
         self.zahl_window.setLayout(layout)
+        self.zahl_window.setMinimumWidth(280)
         self.zahl_window.show()
 
     def beenden(self):
         git_push()
         QApplication.quit()
 
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setStyleSheet(APPLE_STYLESHEET)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
-
-
-    #TODO: funktionen auslagern in eigene dateien

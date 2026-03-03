@@ -1,6 +1,5 @@
 # logik für Elekrotechnick rechenaufgaben anzeige zur Übung
 import json
-import random
 import os
 
 
@@ -13,7 +12,6 @@ def lade_aufgaben():
             daten = json.load(f)
             return daten["aufgaben"]
     except FileNotFoundError:
-        print(f"Fehler: {json_datei} nicht gefunden!")
         return []
 
 
@@ -35,28 +33,6 @@ def prüfe_antwort(aufgabe_id: int, benutzer_input: str) -> bool:
         if aufgabe["id"] == aufgabe_id:
             return benutzer_input.strip() == aufgabe["ergebnis"]
     return False
-
-
-def rechenaufgabe():
-    """
-    Zeigt eine zufällige Aufgabe (PNG) an und fragt den Benutzer nach der Lösung.
-    Vergleicht die Eingabe mit der korrekten Lösung und gibt Feedback.
-    """
-    if not aufgaben:
-        print("Fehler: Keine Aufgaben geladen!")
-        return
-    
-    # Zufällige Aufgabe auswählen
-    aufgabe = random.choice(aufgaben)
-    
-    print(f"\nAufgabe {aufgabe['id']}: {aufgabe['png']}")
-    benutzer_eingabe = input("Gib das Ergebnis ein: ")
-    
-    # Antwort prüfen
-    if benutzer_eingabe.strip() == aufgabe["ergebnis"]:
-        print("Richtig!")
-    else:
-        print("Falsch!")
 
 
 
