@@ -1,0 +1,21 @@
+# AP2 Lernkarten - Gitignore
+# Counter-Datei mit Nutzerdaten gehört nicht ins Repository
+
+# Counter-Datei (enthält Nutzerdaten)
+AP2lernkarten_counter.json
+
+# Build-Output
+bin/
+obj/
+*.exe
+*.dll
+
+# IDE
+.vs/
+.vscode/
+*.sln
+*.csproj
+
+# Cache
+__pycache__/
+*.pyc

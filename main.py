@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QInputDialog, QLineEdit, QFrame
 )
 from PySide6.QtCore import QTimer, Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QMessageBox
 import sys
 from news.news_main import get_news, delete_old_news, add_news_item
@@ -12,8 +13,28 @@ from counter.counter_main import CounterDialog
 from password.password_main import PasswordWindow
 from quiz.quiz_main import QuizMainWindow
 from utils.git_utils import git_pull, git_push, git_merge
+# Module für Netzplan-Übung verfügbar machen
+import sys, os
+# Pfad zum Netzplan-Verzeichnis hinzufügen, damit Imports funktionieren
+netzplan_dir = os.path.join(os.path.dirname(__file__), "netzplan_gui_version")
+if netzplan_dir not in sys.path:
+    sys.path.insert(0, netzplan_dir)
+
 from attendance_calendar.date_attendance_main import AttendanceCalendar
 from Elekrotechnick.gui import ElektroGUI
+from utils.markdown_viewer import MarkdownViewerDialog
+
+# AP2 Lernkarten Quiz
+try:
+    from lernkarten_ap2.quiz_launcher import AP2QuizLauncher
+except ImportError:
+    AP2QuizLauncher = None
+
+# Netzplan-Komponenten (falls verfügbar)
+try:
+    from netzplan_gui_version.netzplan_uebung import NetzplanUebungWindow
+except ImportError:
+    NetzplanUebungWindow = None
 # Zahlensysteme-Funktionen (nur Quiz-Funktionen verwenden, GUI nicht verändern)
 from zahlensysteme.main.fuctions import (
     binaer_zu_dezi,
@@ -179,7 +200,11 @@ class MainWindow(QMainWindow):
         btn_quizscore.clicked.connect(self.oeffne_quizscore)
         top_layout.addWidget(btn_quizscore)
 
-        # Neuer Button für Zahlensysteme zwischen Quiz und Passwortgenerator
+        btn_ap2_quiz = QPushButton("AP2 Lernkarten Quiz")
+        btn_ap2_quiz.clicked.connect(self.oeffne_ap2_quiz)
+        top_layout.addWidget(btn_ap2_quiz)
+
+        # Neuer teil zahlen bis netzplan
         btn_zahlensysteme = QPushButton("Zahlensysteme")
         btn_zahlensysteme.clicked.connect(self.oeffne_zahlensysteme)
         top_layout.addWidget(btn_zahlensysteme)
@@ -187,6 +212,10 @@ class MainWindow(QMainWindow):
         btn_elektro = QPushButton("Elektrotechnik")
         btn_elektro.clicked.connect(self.oeffne_elektrotechnik)
         top_layout.addWidget(btn_elektro)
+
+        btn_netzplan = QPushButton("Netzplan")
+        btn_netzplan.clicked.connect(self.oeffne_netzplan)
+        top_layout.addWidget(btn_netzplan)
 
         btn_password = QPushButton("Passwortgenerator")
         btn_password.clicked.connect(self.oeffne_password)
@@ -211,9 +240,20 @@ class MainWindow(QMainWindow):
         branding_inner = QHBoxLayout()
         logo = QLabel()
         logo.setFixedSize(15, 15)
-        logo.setStyleSheet("background-color: #bbb; border: 1px solid #888;")  # Platzhalter für Logo
+        
+        # Versuche icon.png zu laden, ansonsten Fallback-Farbe
+        icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+        if os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path)
+            # Skaliere auf exakt 15x15 Pixel
+            pixmap = pixmap.scaledToWidth(15, Qt.SmoothTransformation)
+            logo.setPixmap(pixmap)
+        else:
+            # Fallback: Grauer Platzhalter, wenn icon.png nicht existiert
+            logo.setStyleSheet("background-color: #bbb; border: 1px solid #888;")
+        
         branding_inner.addWidget(logo)
-        branding_text = QLabel("MAKE BY UMSCHULUNGS GRUPPE FROM 03.2025-03.2027")
+        branding_text = QLabel("MAKE BY UMSCHULUNGS GRUPPEN: 03.2025-03.2027")
         branding_inner.addWidget(branding_text)
         branding_frame.setLayout(branding_inner)
         branding_layout.addWidget(branding_frame)
@@ -245,6 +285,10 @@ class MainWindow(QMainWindow):
         dialog = CounterDialog(self)
         dialog.exec()
 
+    def oeffne_anwesenheit(self):
+        self.anwesenheit_window = AttendanceCalendar()
+        self.anwesenheit_window.show()
+
     def oeffne_password(self):
         self.password_window = PasswordWindow()
         self.password_window.show()
@@ -253,9 +297,51 @@ class MainWindow(QMainWindow):
         self.quiz_window = QuizMainWindow()
         self.quiz_window.show()
 
+    def oeffne_ap2_quiz(self):
+        if AP2QuizLauncher is None:
+            QMessageBox.warning(self, "Fehler", "AP2 Lernkarten Quiz-Modul nicht verfügbar.")
+            return
+        
+        try:
+            from pathlib import Path
+            quiz_exe = Path(__file__).parent / "lernkarten_ap2" / "main.exe"
+            
+            if not quiz_exe.exists():
+                # Zeige Setup-Anleitung wenn Exe fehlt
+                setup_md = Path(__file__).parent / "lernkarten_ap2" / "SETUP_ANLEITUNG.md"
+                if setup_md.exists():
+                    dialog = MarkdownViewerDialog(
+                        str(setup_md),
+                        "AP2 Lernkarten Quiz - Einrichtung erforderlich",
+                        self
+                    )
+                    dialog.exec()
+                else:
+                    QMessageBox.warning(
+                        self, 
+                        "Fehler", 
+                        f"Quiz-Programm nicht gefunden:\n{quiz_exe}\n\nBitte main.cs kompilieren."
+                    )
+                return
+            
+            launcher = AP2QuizLauncher(str(quiz_exe))
+            if launcher.start_quiz():
+                QMessageBox.information(self, "Erfolg", "AP2 Lernkarten Quiz wurde gestartet!")
+            else:
+                QMessageBox.critical(self, "Fehler", "Quiz konnte nicht gestartet werden.")
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Fehler beim Starten des Quiz: {e}")
+
     def oeffne_elektrotechnik(self):
         self.elektro_window = ElektroGUI()
         self.elektro_window.show()
+
+    def oeffne_netzplan(self):
+        if NetzplanUebungWindow is None:
+            QMessageBox.warning(self, "Fehler", "Netzplan-Modul fehlt oder konnte nicht geladen werden.")
+            return
+        self.netzplan_window = NetzplanUebungWindow()
+        self.netzplan_window.show()
 
     def git_update(self):
         git_pull()
