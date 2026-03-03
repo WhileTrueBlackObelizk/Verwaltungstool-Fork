@@ -1,10 +1,9 @@
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout,
     QHBoxLayout, QLabel, QInputDialog, QLineEdit, QFrame, QGridLayout,
-    QSizePolicy
+    QSizePolicy, QMessageBox
 )
-from PySide6.QtCore import QTimer, Qt, QSize
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import QTimer, Qt
 import sys
 from news.news_main import get_news, delete_old_news, add_news_item
 from quotes.quotes_main import get_quotes, add_quotes as add_quote_item
@@ -30,7 +29,6 @@ def make_card(layout_inner: QVBoxLayout) -> QFrame:
     frame = QFrame()
     frame.setProperty("card", True)
     frame.setLayout(layout_inner)
-    # Schatten über stylesheet simuliert (QGraphicsDropShadowEffect wäre schwerer)
     frame.setStyleSheet(
         "QFrame[card='true'] {"
         "  background: white;"
@@ -41,14 +39,18 @@ def make_card(layout_inner: QVBoxLayout) -> QFrame:
     return frame
 
 
-# ── News-Panel ───────────────────────────────────────────────────────────────
+# ── Carousel-Panel (News & Memos) ─────────────────────────────────────────────
 
-class NewsFenster(QWidget):
-    def __init__(self):
+class CarouselPanel(QWidget):
+    """Wiederverwendbares Rotations-Panel für News und Memos."""
+    def __init__(self, title, get_fn, add_fn, dialog_title, dialog_label):
         super().__init__()
-        self.news_list = get_news()
-        if not self.news_list:
-            self.news_list = ["Keine News vorhanden. Klicke '＋' um eine zu erstellen."]
+        self._get_fn = get_fn
+        self._add_fn = add_fn
+        self._dialog_title = dialog_title
+        self._dialog_label = dialog_label
+
+        self.items = get_fn()
         self.current_index = 0
 
         outer = QVBoxLayout(self)
@@ -57,12 +59,11 @@ class NewsFenster(QWidget):
         inner = QVBoxLayout()
         inner.setSpacing(8)
 
-        header = QLabel("News")
-        header.setProperty("heading", True)
+        header = QLabel(title)
         header.setStyleSheet("font-size: 15px; font-weight: 600; color: #1C1C1E; background: transparent;")
         inner.addWidget(header)
 
-        self.label = QLabel(self.news_list[self.current_index])
+        self.label = QLabel(self.items[self.current_index])
         self.label.setWordWrap(True)
         self.label.setStyleSheet("color: #3A3A3C; background: transparent; font-size: 13px;")
         self.label.setAlignment(Qt.AlignTop)
@@ -72,9 +73,9 @@ class NewsFenster(QWidget):
 
         btn_row = QHBoxLayout()
         btn_row.setSpacing(6)
+
         btn_prev = QPushButton("‹")
         btn_prev.setFixedSize(32, 32)
-        btn_prev.setProperty("secondary", True)
         btn_prev.setStyleSheet(
             "QPushButton { background: #E5E5EA; color: #1C1C1E; border-radius: 8px; "
             "font-size: 16px; border: none; }"
@@ -98,7 +99,7 @@ class NewsFenster(QWidget):
             "font-size: 16px; border: none; }"
             "QPushButton:hover { background: #0062CC; }"
         )
-        btn_new.clicked.connect(self.add_news)
+        btn_new.clicked.connect(self.add_item)
 
         btn_row.addWidget(btn_prev)
         btn_row.addWidget(btn_next)
@@ -113,132 +114,36 @@ class NewsFenster(QWidget):
         self.timer.start(45000)
 
     def show_next(self):
-        if len(self.news_list) <= 1:
+        if len(self.items) <= 1:
             return
-        self.current_index = (self.current_index + 1) % len(self.news_list)
-        self.label.setText(self.news_list[self.current_index])
+        self.current_index = (self.current_index + 1) % len(self.items)
+        self.label.setText(self.items[self.current_index])
 
     def show_prev(self):
-        if len(self.news_list) <= 1:
+        if len(self.items) <= 1:
             return
-        self.current_index = (self.current_index - 1) % len(self.news_list)
-        self.label.setText(self.news_list[self.current_index])
+        self.current_index = (self.current_index - 1) % len(self.items)
+        self.label.setText(self.items[self.current_index])
 
     def show_next_immediately(self):
         self.timer.stop()
         self.show_next()
         self.timer.start(45000)
 
-    def reload_news(self):
-        self.news_list = get_news()
-        if not self.news_list:
-            self.news_list = ["Keine News vorhanden."]
-        if self.current_index >= len(self.news_list):
+    def reload(self):
+        self.items = self._get_fn()
+        if self.current_index >= len(self.items):
             self.current_index = 0
-        self.label.setText(self.news_list[self.current_index])
+        self.label.setText(self.items[self.current_index])
 
-    def add_news(self):
-        text, ok = QInputDialog.getText(self, "Neue News", "News-Text eingeben:", QLineEdit.Normal)
+    def add_item(self):
+        text, ok = QInputDialog.getText(self, self._dialog_title, self._dialog_label, QLineEdit.Normal)
         if ok and text.strip():
             try:
-                from datetime import datetime
-                created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                add_news_item(text, "news/news.db", created_at)
-                self.reload_news()
+                self._add_fn(text)
+                self.reload()
             except Exception as e:
                 self.label.setText(f"Fehler: {e}")
-
-
-# ── Quotes-Panel ─────────────────────────────────────────────────────────────
-
-class QuotesFenster(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.quotes_list = get_quotes()
-        self.current_index = 0
-
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-
-        inner = QVBoxLayout()
-        inner.setSpacing(8)
-
-        header = QLabel("Memos")
-        header.setStyleSheet("font-size: 15px; font-weight: 600; color: #1C1C1E; background: transparent;")
-        inner.addWidget(header)
-
-        self.label = QLabel(self.quotes_list[self.current_index])
-        self.label.setWordWrap(True)
-        self.label.setStyleSheet("color: #3A3A3C; background: transparent; font-size: 13px;")
-        self.label.setAlignment(Qt.AlignTop)
-        self.label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        inner.addWidget(self.label)
-        inner.addStretch()
-
-        btn_row = QHBoxLayout()
-        btn_row.setSpacing(6)
-        btn_prev = QPushButton("‹")
-        btn_prev.setFixedSize(32, 32)
-        btn_prev.setStyleSheet(
-            "QPushButton { background: #E5E5EA; color: #1C1C1E; border-radius: 8px; "
-            "font-size: 16px; border: none; }"
-            "QPushButton:hover { background: #D1D1D6; }"
-        )
-        btn_prev.clicked.connect(self.show_prev)
-
-        btn_next = QPushButton("›")
-        btn_next.setFixedSize(32, 32)
-        btn_next.setStyleSheet(
-            "QPushButton { background: #E5E5EA; color: #1C1C1E; border-radius: 8px; "
-            "font-size: 16px; border: none; }"
-            "QPushButton:hover { background: #D1D1D6; }"
-        )
-        btn_next.clicked.connect(self.show_next_immediately)
-
-        btn_new = QPushButton("＋")
-        btn_new.setFixedSize(32, 32)
-        btn_new.setStyleSheet(
-            "QPushButton { background: #007AFF; color: white; border-radius: 8px; "
-            "font-size: 16px; border: none; }"
-            "QPushButton:hover { background: #0062CC; }"
-        )
-        btn_new.clicked.connect(self.add_quote)
-
-        btn_row.addWidget(btn_prev)
-        btn_row.addWidget(btn_next)
-        btn_row.addStretch()
-        btn_row.addWidget(btn_new)
-        inner.addLayout(btn_row)
-
-        outer.addWidget(make_card(inner))
-
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.show_next)
-        self.timer.start(45000)
-
-    def show_prev(self):
-        self.current_index = (self.current_index - 1) % len(self.quotes_list)
-        self.label.setText(self.quotes_list[self.current_index])
-
-    def show_next(self):
-        self.current_index = (self.current_index + 1) % len(self.quotes_list)
-        self.label.setText(self.quotes_list[self.current_index])
-
-    def show_next_immediately(self):
-        self.timer.stop()
-        self.show_next()
-        self.timer.start(45000)
-
-    def reload_quotes(self):
-        self.quotes_list = get_quotes()
-        self.label.setText(self.quotes_list[self.current_index])
-
-    def add_quote(self):
-        text, ok = QInputDialog.getText(self, "Neues Memo", "Memo-Text eingeben:", QLineEdit.Normal)
-        if ok and text.strip():
-            add_quote_item(text, "quotes/quotes.db")
-            git_push()
-            self.reload_quotes()
 
 
 # ── Hauptfenster ─────────────────────────────────────────────────────────────
@@ -302,15 +207,23 @@ class MainWindow(QMainWindow):
 
         root_layout.addLayout(grid)
 
-        # ── News + Quotes nebeneinander ───────────────────────
+        # ── News + Memos nebeneinander ────────────────────────
         panels = QHBoxLayout()
         panels.setSpacing(12)
-        self.news_fenster = NewsFenster()
-        self.quotes_fenster = QuotesFenster()
-        self.news_fenster.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.quotes_fenster.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        panels.addWidget(self.news_fenster)
-        panels.addWidget(self.quotes_fenster)
+        self.news_panel = CarouselPanel(
+            "News", get_news,
+            lambda text: add_news_item(text),
+            "Neue News", "News-Text eingeben:",
+        )
+        self.memos_panel = CarouselPanel(
+            "Memos", get_quotes,
+            lambda text: (add_quote_item(text), git_push()),
+            "Neues Memo", "Memo-Text eingeben:",
+        )
+        self.news_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.memos_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        panels.addWidget(self.news_panel)
+        panels.addWidget(self.memos_panel)
         root_layout.addLayout(panels, stretch=1)
 
         # ── Footer ────────────────────────────────────────────
@@ -363,11 +276,11 @@ class MainWindow(QMainWindow):
     def git_update(self):
         git_pull()
         git_merge()
-        self.news_fenster.reload_news()
+        self.news_panel.reload()
 
     def git_auto_pull(self):
         git_pull()
-        self.news_fenster.reload_news()
+        self.news_panel.reload()
 
     def ask_and_check(self, module, parent=None):
         try:
