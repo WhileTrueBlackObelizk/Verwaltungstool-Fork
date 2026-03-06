@@ -123,7 +123,7 @@ def generate_random_task_list(num_tasks: int = None) -> Tuple[Dict, Dict, str]:
         # ist letzten Task als Endknoten
         last = task_names[-1]
         preds.setdefault(last, [])
-
+    print(" def generate_random_task_list: alles ok")
     return tasks, preds, csv_content, num_tasks
 
 
@@ -133,3 +133,5 @@ def save_csv(csv_content: str, filepath: str):
     """
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(csv_content)
+        print(" def save_csv: alles ok")
+

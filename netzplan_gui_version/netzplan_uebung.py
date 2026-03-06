@@ -33,6 +33,8 @@ class NetzplanUebungWindow(QMainWindow):
         # kann das automatische Erzeugen einer Aufgabe unterdrückt werden.
         if auto_generate:
             self.generate_new_exercise()
+            print(" def __init__: alles ok")
+
     
     def init_ui(self):
         """Initialisiert die Benutzeroberfläche."""
@@ -73,6 +75,8 @@ class NetzplanUebungWindow(QMainWindow):
         
         main_layout.addLayout(button_layout)
         central_widget.setLayout(main_layout)
+        print(" def init_ui: alles ok")
+
     
     def clear_content(self):
         """Leert den Content-Bereich."""
@@ -80,6 +84,8 @@ class NetzplanUebungWindow(QMainWindow):
             widget = self.content_layout.takeAt(0).widget()
             if widget:
                 widget.deleteLater()
+                print(" def clear_content: alles ok")
+
     
     def generate_new_exercise(self):
         """Generiert eine neue zufällige Übungsaufgabe."""
@@ -100,6 +106,8 @@ class NetzplanUebungWindow(QMainWindow):
         
         # Aufgabe anzeigen
         self.show_exercise()
+        print(" def generate_new_exercise: alles ok")
+
     
     def show_exercise(self):
         """Zeigt die Aufgabe (CSV-Tabelle) an."""
@@ -139,7 +147,9 @@ class NetzplanUebungWindow(QMainWindow):
         
         # Streetch am Ende fuer bessere Optik
         self.content_layout.addStretch()
-    
+        print(" def show_exercise: alles ok")
+
+
     def show_solution(self):
         """Berechnet und zeigt die Lösung an."""
         self.clear_content()
@@ -230,7 +240,8 @@ class NetzplanUebungWindow(QMainWindow):
         
         # am Ende
         self.content_layout.addStretch()# stretch= heist das der restliche plat flexibel bleibt und die Elemente oben bleiben
-    
+        print(" def show_solution: alles ok")
+
     def show_results_table(self):
         """Zeigt die berechneten CPM-Werte in einer Tabelle."""
         if not self.current_metrics:
@@ -276,10 +287,13 @@ class NetzplanUebungWindow(QMainWindow):
         duration_label = QLabel(f"Projekt-Dauer: {self.current_project_duration:.1f} Tage")
         duration_label.setStyleSheet("font-size: 11px; color: #333; margin-top: 10px;")
         self.content_layout.addWidget(duration_label)
-    
+        print(" def show_results_table: alles ok")
+
+
     def cancel_exercise(self):
         """Bricht die aktuelle Übung ab."""
         self.generate_new_exercise()
+        print(" def cancel_exercise: alles ok")
 
     # ------------------------------------------------------------------
     # Fallback-Zeichnung
@@ -293,6 +307,7 @@ class NetzplanUebungWindow(QMainWindow):
         )
         notice.setStyleSheet("color: gray; font-style: italic;")
         self.content_layout.addWidget(notice)
+        print(" def draw_network_graph: alles ok")
 
 #---------------------------------
 # Hauptfunktion zum Starten der GUI
@@ -306,6 +321,7 @@ def main():
     window = NetzplanUebungWindow()
     window.show()
     sys.exit(app.exec())
+    print(" def main: alles ok")
 
 
 if __name__ == "__main__":

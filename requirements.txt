@@ -1,3 +1,9 @@
 pyside6==6.10.0
 pyside6_addons==6.10.0
 pyside6_essentials==6.10.0
+htmlentities
+pandas
+markdown
+graphviz
+# optional helper-Paket, erleichtert den Zugriff auf Graphviz in Python
+
