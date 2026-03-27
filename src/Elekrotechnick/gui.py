@@ -22,7 +22,7 @@ class ElektroGUI(QWidget):
         self.aufgaben = self._lade_aufgaben()
         self.aktuelles = None
         self.png_ordner = os.path.join(os.path.dirname(__file__), "PNG_e.aufgaben")
-        print(self.png_ordner)
+
         # Layout
         layout = QVBoxLayout()
         
