@@ -27,10 +27,8 @@ from utils.markdown_viewer import MarkdownViewerDialog
 from verwaltungstool.config import settings
 
 # AP2 Lernkarten Quiz
-try:
-    from lernkarten_ap2.quiz_launcher import AP2QuizLauncher
-except ImportError:
-    AP2QuizLauncher = None
+
+from verwaltungstool.flashcards.flashcards_main import FlashcardsMainWindow
 
 # Netzplan-Komponenten (falls verfügbar)
 try:
@@ -203,8 +201,8 @@ class MainWindow(QMainWindow):
         btn_quizscore.clicked.connect(self.oeffne_quizscore)
         top_layout.addWidget(btn_quizscore)
 
-        btn_ap2_quiz = QPushButton("AP2 Lernkarten Quiz")
-        btn_ap2_quiz.clicked.connect(self.oeffne_ap2_quiz)
+        btn_ap2_quiz = QPushButton("Lernkarten Basiertes Quiz")
+        btn_ap2_quiz.clicked.connect(self.oeffne_flashcards_quiz)
         top_layout.addWidget(btn_ap2_quiz)
 
         # Neuer teil zahlen bis netzplan
@@ -300,40 +298,12 @@ class MainWindow(QMainWindow):
         self.quiz_window = QuizMainWindow()
         self.quiz_window.show()
 
-    def oeffne_ap2_quiz(self):
-        if AP2QuizLauncher is None:
-            QMessageBox.warning(self, "Fehler", "AP2 Lernkarten Quiz-Modul nicht verfügbar.")
-            return
-        
+    def oeffne_flashcards_quiz(self):
         try:
-            from pathlib import Path
-            quiz_exe = Path(__file__).parent / "lernkarten_ap2" / "main.exe"
-            
-            if not quiz_exe.exists():
-                # Zeige Setup-Anleitung wenn Exe fehlt
-                setup_md = Path(__file__).parent / "lernkarten_ap2" / "SETUP_ANLEITUNG.md"
-                if setup_md.exists():
-                    dialog = MarkdownViewerDialog(
-                        str(setup_md),
-                        "AP2 Lernkarten Quiz - Einrichtung erforderlich",
-                        self
-                    )
-                    dialog.exec()
-                else:
-                    QMessageBox.warning(
-                        self, 
-                        "Fehler", 
-                        f"Quiz-Programm nicht gefunden:\n{quiz_exe}\n\nBitte main.cs kompilieren."
-                    )
-                return
-            
-            launcher = AP2QuizLauncher(str(quiz_exe))
-            if launcher.start_quiz():
-                QMessageBox.information(self, "Erfolg", "AP2 Lernkarten Quiz wurde gestartet!")
-            else:
-                QMessageBox.critical(self, "Fehler", "Quiz konnte nicht gestartet werden.")
+            self.flashcards_window = FlashcardsMainWindow()
+            self.flashcards_window.show()
         except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Fehler beim Starten des Quiz: {e}")
+            QMessageBox.critical(self, "Fehler", f"Fehler beim Öffnen des Lernkarten-Quiz-Moduls: {e}")
 
     def oeffne_elektrotechnik(self):
         self.elektro_window = ElektroGUI()
