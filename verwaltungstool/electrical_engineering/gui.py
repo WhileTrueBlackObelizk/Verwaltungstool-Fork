@@ -11,7 +11,7 @@ import json
 
 
 # Funktionen aus dem Modul importieren
-from Elekrotechnick.main import prüfe_antwort
+from electrical_engineering.electrical_engineering_main import prüfe_antwort
 
 
 class ElektroGUI(QWidget):
