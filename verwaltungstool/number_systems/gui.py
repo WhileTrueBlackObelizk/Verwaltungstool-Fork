@@ -8,11 +8,11 @@ from PySide6.QtWidgets import (
 )
 import sys
 
-from fuctions import (
-    binaer_zu_dezi,
-    dezi_zu_binaer,
-    dezi_zu_hexadezi,
-    hexadezi_zu_dezi,
+from verwaltungstool.number_systems.functions import (
+    bin_to_dec,
+    dec_to_bin,
+    dec_to_hex,
+    hex_to_dec,
 )
 
 
@@ -50,10 +50,10 @@ def run():
     btn4 = QPushButton("Hexadezimal -> Dezimal")
     btn5 = QPushButton("Beenden")
 
-    btn1.clicked.connect(lambda: ask_and_check(binaer_zu_dezi))
-    btn2.clicked.connect(lambda: ask_and_check(dezi_zu_binaer))
-    btn3.clicked.connect(lambda: ask_and_check(dezi_zu_hexadezi))
-    btn4.clicked.connect(lambda: ask_and_check(hexadezi_zu_dezi))
+    btn1.clicked.connect(lambda: ask_and_check(bin_to_dec))
+    btn2.clicked.connect(lambda: ask_and_check(dec_to_bin))
+    btn3.clicked.connect(lambda: ask_and_check(dec_to_hex))
+    btn4.clicked.connect(lambda: ask_and_check(hex_to_dec))
     btn5.clicked.connect(app.quit)
 
     for btn in (btn1, btn2, btn3, btn4, btn5):

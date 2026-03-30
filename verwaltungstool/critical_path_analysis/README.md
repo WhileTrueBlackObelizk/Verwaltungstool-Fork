@@ -45,7 +45,7 @@ Das **Netzplan-Übungstool** ist eine interaktive Lernplattform zum Üben und Ve
 
 ## Technische Details
 
-### Generator (`netzplan_generator.py`)
+### Generator (`critical_path_analysis_generator.py`)
 - Erzeugt zufällige Vorgangslisten mit sinnvollen Abhängigkeiten.
 - Stellt sicher, dass:
   - Es genau **einen Startknoten** (A) ohne Vorgänger gibt.
@@ -53,13 +53,13 @@ Das **Netzplan-Übungstool** ist eine interaktive Lernplattform zum Üben und Ve
   - Der Netzplan **zyklenfrei** (DAG) ist.
   - Alle Vorgangsdauern **ganze Zahlen** sind.
 
-### CPM-Berechnung (`netzplan_core.py`)
+### CPM-Berechnung (`critical_path_analysis_core.py`)
 - Führt eine **Vorwärtspass**-Berechnung durch (FAZ, FEZ).
 - Führt eine **Rückwärtspass**-Berechnung durch (SAZ, SEZ).
 - Berechnet **Gesamtpuffer** und **Freien Puffer** für jeden Vorgang.
 - Identifiziert den **kritischen Pfad** (Vorgänge mit GP = 0).
 
-### GUI (`netzplan_uebung.py`)
+### GUI (`critical_path_analysis_exercises.py`)
 - Wird über PySide6 (Qt) bereitgestellt.
 - Zeigt die Aufgabe in einer **Tabelle** an.
 - Beim Klick auf „Fertig":

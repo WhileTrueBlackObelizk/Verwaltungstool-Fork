@@ -38,11 +38,11 @@ try:
 except ImportError as e:
     NetzplanUebungWindow = None
 # Zahlensysteme-Funktionen (nur Quiz-Funktionen verwenden, GUI nicht verändern)
-from zahlensysteme.main.fuctions import (
-    binaer_zu_dezi,
-    dezi_zu_binaer,
-    dezi_zu_hexadezi,
-    hexadezi_zu_dezi,
+from verwaltungstool.number_systems.functions import (
+    bin_to_dec,
+    dec_to_bin,
+    dec_to_hex,
+    hex_to_dec,
 )
 
 
@@ -393,10 +393,10 @@ class MainWindow(QMainWindow):
         btn4 = QPushButton("Hexadezimal -> Dezimal")
         btn5 = QPushButton("Beenden")
 
-        btn1.clicked.connect(lambda: self.ask_and_check(binaer_zu_dezi, self.zahl_window))
-        btn2.clicked.connect(lambda: self.ask_and_check(dezi_zu_binaer, self.zahl_window))
-        btn3.clicked.connect(lambda: self.ask_and_check(dezi_zu_hexadezi, self.zahl_window))
-        btn4.clicked.connect(lambda: self.ask_and_check(hexadezi_zu_dezi, self.zahl_window))
+        btn1.clicked.connect(lambda: self.ask_and_check(bin_to_dec, self.zahl_window))
+        btn2.clicked.connect(lambda: self.ask_and_check(dec_to_bin, self.zahl_window))
+        btn3.clicked.connect(lambda: self.ask_and_check(dec_to_hex, self.zahl_window))
+        btn4.clicked.connect(lambda: self.ask_and_check(hex_to_dec, self.zahl_window))
         btn5.clicked.connect(self.zahl_window.close)
 
         for btn in (btn1, btn2, btn3, btn4, btn5):
