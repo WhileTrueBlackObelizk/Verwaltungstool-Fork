@@ -55,9 +55,10 @@ Abhängigkeiten installieren:
 
 ---
 
-Bash
-
+```bash
 pip install -r requirements.txt
+```
+
 Hinweis: Für die Netzplan-Funktion muss Graphviz zusätzlich auf dem Betriebssystem installiert sein.
 
 ---
