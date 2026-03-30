@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 
-from netzplan_core import load_csv, compute_cpm, build_dot, render_dot
-from netzplan_generator import generate_random_task_list, save_csv
+from verwaltungstool.critical_path_analysis.critical_path_analysis_core import load_csv, compute_cpm, build_dot, render_dot
+from verwaltungstool.critical_path_analysis.critical_path_analysis_generator import generate_random_task_list, save_csv
 
 #------------------------------
 #gui

@@ -16,9 +16,9 @@ from utils.git_utils import git_pull, git_push, git_merge
 # Module für Netzplan-Übung verfügbar machen
 import sys, os
 # Pfad zum Netzplan-Verzeichnis hinzufügen, damit Imports funktionieren
-netzplan_dir = os.path.join(os.path.dirname(__file__), "netzplan_gui_version")
-if netzplan_dir not in sys.path:
-    sys.path.insert(0, netzplan_dir)
+#netzplan_dir = os.path.join(os.path.dirname(__file__), "critical_path_analysis")
+#if netzplan_dir not in sys.path:
+#    sys.path.insert(0, netzplan_dir)
 
 from attendance_calendar.date_attendance_main import AttendanceCalendar
 from electrical_engineering.gui import ElektroGUI
@@ -34,8 +34,8 @@ except ImportError:
 
 # Netzplan-Komponenten (falls verfügbar)
 try:
-    from netzplan_gui_version.netzplan_uebung import NetzplanUebungWindow
-except ImportError:
+    from verwaltungstool.critical_path_analysis.critical_path_analysis_exercises import NetzplanUebungWindow
+except ImportError as e:
     NetzplanUebungWindow = None
 # Zahlensysteme-Funktionen (nur Quiz-Funktionen verwenden, GUI nicht verändern)
 from zahlensysteme.main.fuctions import (

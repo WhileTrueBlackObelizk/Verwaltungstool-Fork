@@ -10,7 +10,7 @@ from pathlib import Path
 # Stelle sicher, dass die Module im gleichen Verzeichnis gefunden werden
 sys.path.insert(0, str(Path(__file__).parent))
 
-from netzplan_uebung import main
+from verwaltungstool.critical_path_analysis.critical_path_analysis_exercises import main
 
 if __name__ == "__main__":
     main()

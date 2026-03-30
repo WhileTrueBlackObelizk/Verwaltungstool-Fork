@@ -18,14 +18,14 @@ import unittest
 pkg_dir = os.path.join(os.path.dirname(__file__))
 sys.path.insert(0, pkg_dir)
 
-from netzplan_core import (
+from verwaltungstool.critical_path_analysis.critical_path_analysis_core import (
     parse_predecessors,
     load_csv,
     compute_cpm,
     build_dot,
     render_dot,
 )
-from netzplan_generator import generate_random_task_list
+from verwaltungstool.critical_path_analysis.critical_path_analysis_generator import generate_random_task_list
 
 # Für GUI-bezogene Tests wird eine QApplication benötigt.
 from PySide6.QtWidgets import QApplication
@@ -133,7 +133,7 @@ class TestNetzplanCore(unittest.TestCase):
 
     def test_draw_network_graph_available(self):
         # lediglich prüfen, dass die Methode existiert und nicht abstürzt
-        from netzplan_uebung import NetzplanUebungWindow
+        from verwaltungstool.critical_path_analysis.critical_path_analysis_exercises import NetzplanUebungWindow
 
         # Erzeuge das Fenster ohne sofortige Aufgabengenerierung, damit
         # keine zusätzlichen Abhängigkeiten (pandas) geladen werden müssen.

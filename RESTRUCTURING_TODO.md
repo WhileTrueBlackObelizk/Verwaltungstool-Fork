@@ -1,17 +1,26 @@
+-Namen der Ornder - einheitlich umbennenen
+-ordnerstruktur überlegen für übersichtlichkeit
+-Code in ENG-Sprache
+
+
+
+xElektrotechnik -> "electrical_engineering"
+Netzplantechnik -> "critical_path_analysis"
+Lernkarten -> "flashcards"
+Zahlensysteme -> "number systems"
+no_cheating
+
+
 # SF
 -Dokus für Funktionen im attendance_calendar
--Namen der Ornder - einheitlich umbennenen
--Code in ENG-Sprache
 -verschiedene Main.py ümbenennen zur übersicht
 -/Elekrotechnick/read_me:E.technick.md umbennenen
 -Setup-Datei anlegen die über alle ordner hinweg das setup übernimmt 
--flask mit gerhard datei - entscheidung ? /styles/flask_mit_gerhardt.md
 -/zahlensysteme/main/main.py übersichtlicher gestalten
 -Licensetxt überarbeiten - wegen supabase
 -start.py zur allgemeinen setupdatei integrieren 
 -db.dateien mit supabase integrieren
 
--ordnerstruktur überlegen für übersichtlichkeit
 -my_project/
 ├── main.py
 ├── utils.py
@@ -20,19 +29,6 @@
 ├── test_main.py
 ├── requirements.txt
 └── README.md
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # FK
 x-styles/md datei könnte weg
@@ -65,9 +61,8 @@ x-start.py veraltet
 
 
 [x] obsolete Dateien löschen 
-
-[x] src-Verzeichnis anlegen
-[x] alles bis auf .gitignore, .venv, .vscode, requirements.txt und Readmes erstmal in den src-Ordner verschieben
+[x] verwaltungstool-Verzeichnis anlegen
+[x] alles bis auf .gitignore, .venv, .vscode, requirements.txt und Readmes erstmal in den verwaltungstool-Ordner verschieben
 
 [X] data-Verzeichnis anlegen (2 Unterverzeichnisse, sqlite und json)
 
